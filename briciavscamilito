@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Aventura PRO</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #5c94fc; }
+  canvas { display: block; margin: auto; background: #5c94fc; }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="900" height="400"></canvas>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+// ===== CÁMARA =====
+let cameraX = 0;
+
+// ===== PLAYER =====
+let player = {
+  name: "Camilito",
+  x: 50,
+  y: 0,
+  width: 30,
+  height: 30,
+  vx: 0,
+  vy: 0,
+  speed: 4,
+  jump: -12,
+  grounded: false,
+  attacking: false
+};
+
+// ===== FRIEND =====
+let friend = {
+  name: "Cristobal Suito",
+  x: 1800,
+  y: 310,
+  width: 30,
+  height: 40
+};
+
+// ===== BOSS =====
+let boss = {
+  name: "Bricia (Boss)",
+  x: 1600,
+  y: 300,
+  width: 60,
+  height: 60,
+  vx: 2,
+  health: 6,
+  alive: true
+};
+
+// ===== GRAVEDAD =====
+let gravity = 0.6;
+
+// ===== MAPA MÁS GRANDE =====
+let platforms = [
+  {x: 0, y: 350, width: 2000, height: 50},
+
+  {x: 200, y: 280, width: 100, height: 20},
+  {x: 350, y: 230, width: 100, height: 20},
+  {x: 550, y: 300, width: 120, height: 20},
+  {x: 750, y: 250, width: 100, height: 20},
+  {x: 950, y: 200, width: 120, height: 20},
+  {x: 1150, y: 270, width: 120, height: 20},
+  {x: 1350, y: 230, width: 120, height: 20}
+];
+
+// ===== CONTROLES =====
+let keys = {};
+
+document.addEventListener("keydown", e => {
+  keys[e.code] = true;
+
+  if (e.code === "KeyX") {
+    player.attacking = true;
+    setTimeout(() => player.attacking = false, 200);
+  }
+});
+
+document.addEventListener("keyup", e => {
+  keys[e.code] = false;
+});
+
+// ===== COLISIÓN =====
+function collision(a, b) {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+  );
+}
+
+// ===== UPDATE =====
+function update() {
+
+  player.vx = 0;
+  if (keys["ArrowRight"]) player.vx = player.speed;
+  if (keys["ArrowLeft"]) player.vx = -player.speed;
+
+  if (keys["Space"] && player.grounded) {
+    player.vy = player.jump;
+    player.grounded = false;
+  }
+
+  player.vy += gravity;
+  player.x += player.vx;
+  player.y += player.vy;
+
+  player.grounded = false;
+
+  platforms.forEach(p => {
+    if (collision(player, p)) {
+      if (player.vy > 0) {
+        player.y = p.y - player.height;
+        player.vy = 0;
+        player.grounded = true;
+      }
+    }
+  });
+
+  // Cámara sigue al jugador
+  cameraX = player.x - 200;
+
+  // Boss
+  if (boss.alive) {
+    boss.x += boss.vx;
+    if (boss.x > 1700 || boss.x < 1500) boss.vx *= -1;
+
+    if (collision(player, boss)) {
+      if (player.attacking) {
+        boss.health--;
+        player.vy = -10;
+      } else {
+        alert("💀 Perdiste");
+        location.reload();
+      }
+    }
+
+    if (boss.health <= 0) boss.alive = false;
+  }
+
+  // Ganar
+  if (!boss.alive && collision(player, friend)) {
+    alert("🎉 ¡Rescataste a Cristobal Suito!");
+    location.reload();
+  }
+}
+
+// ===== TEXTO =====
+function drawName(entity) {
+  ctx.fillStyle = "white";
+  ctx.font = "14px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText(entity.name, entity.x - cameraX + entity.width/2, entity.y - 10);
+}
+
+// ===== DRAW =====
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Plataformas
+  ctx.fillStyle = "#8B4513";
+  platforms.forEach(p => {
+    ctx.fillRect(p.x - cameraX, p.y, p.width, p.height);
+  });
+
+  // Player
+  ctx.fillStyle = player.attacking ? "orange" : "red";
+  ctx.fillRect(player.x - cameraX, player.y, player.width, player.height);
+  drawName(player);
+
+  // Boss
+  if (boss.alive) {
+    ctx.fillStyle = "purple";
+    ctx.fillRect(boss.x - cameraX, boss.y, boss.width, boss.height);
+    drawName(boss);
+
+    ctx.fillText("HP: " + boss.health, boss.x - cameraX + 30, boss.y - 20);
+  }
+
+  // Friend
+  ctx.fillStyle = "blue";
+  ctx.fillRect(friend.x - cameraX, friend.y, friend.width, friend.height);
+  drawName(friend);
+}
+
+// ===== LOOP =====
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+
+</body>
+</html>
